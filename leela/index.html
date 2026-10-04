@@ -82,7 +82,35 @@ var special={
 72:["Цикл завершён.","Что весь путь показал тебе о первоначальном вопросе?"]
 };
 var pos=0,entered=false,history=[];
+var STORAGE_KEY="leela_game_state_v2";
+var recoveredPath=[1,7,8,13,15,19,25,50,53,58,13,19,25,27,30,35,37,39,9,15,16,21,27,30,34,39,40,9,14,16];
 var board=document.getElementById("board"),die=document.getElementById("die"),status=document.getElementById("status"),meaning=document.getElementById("meaning"),question=document.getElementById("question"),log=document.getElementById("log");
+function saveState(){
+ try{
+  localStorage.setItem(STORAGE_KEY,JSON.stringify({pos:pos,entered:entered,history:history,die:die.textContent}));
+ }catch(e){}
+}
+function loadState(){
+ try{
+  var raw=localStorage.getItem(STORAGE_KEY);
+  if(raw){
+   var s=JSON.parse(raw);
+   if(typeof s.pos==="number" && s.pos>=0 && s.pos<=72){
+    pos=s.pos; entered=!!s.entered;
+    history=Array.isArray(s.history)?s.history:[];
+    if(s.die)die.textContent=s.die;
+    return;
+   }
+  }
+ }catch(e){}
+ // One-time recovery of the session recorded in this chat.
+ pos=16; entered=true;
+ history=[
+  "Восстановлено после выгрузки браузера: 16. Ревность.",
+  "Путь из чата: "+recoveredPath.join(" → ")
+ ];
+ saveState();
+}
 function boardOrder(){
  var out=[],row,start,i;
  for(row=7;row>=0;row--){
@@ -114,7 +142,11 @@ function render(){
   question.textContent="Наблюдай первую честную реакцию на выпавшую клетку, не пытаясь сразу её объяснить.";
  }
 }
-function addLog(t){history.unshift(t);log.innerHTML="";for(var i=0;i<history.length&&i<12;i++){var d=document.createElement("div");d.textContent=history[i];log.appendChild(d);}}
+function drawLog(){
+ log.innerHTML="";
+ for(var i=0;i<history.length&&i<12;i++){var d=document.createElement("div");d.textContent=history[i];log.appendChild(d);}
+}
+function addLog(t){history.unshift(t);drawLog();saveState();}
 function roll(){
  var r=Math.floor(Math.random()*6)+1;
  die.textContent=["⚀","⚁","⚂","⚃","⚄","⚅"][r-1];
@@ -130,11 +162,14 @@ function roll(){
   pos=to;addLog((to>from?"Стрела":"Змея")+": "+from+" → "+to+".");
  }
  render();
+ saveState();
 }
 document.getElementById("roll").addEventListener("click",roll,false);
 document.getElementById("reset").addEventListener("click",function(){
- pos=0;entered=false;history=[];die.textContent="⚀";log.innerHTML="";render();
+ pos=0;entered=false;history=[];die.textContent="⚀";log.innerHTML="";saveState();render();
 },false);
+loadState();
+drawLog();
 render();
 })();
 </script>
