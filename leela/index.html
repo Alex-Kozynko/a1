@@ -42,7 +42,7 @@ h1{font:600 34px Georgia,serif;color:#f0cf87;margin:3px 0}
 <body>
 <main>
 <h1>Лила</h1>
-<div class="intro">Игра самопознания. Для входа в игру выпадает шестёрка.</div>
+<div class="intro">Версия по доске Хариша Джохари · 72 клетки · змеи и стрелы. Для входа выпадает шестёрка → клетка 6.</div>
 <div class="board-wrap"><div id="board"></div></div>
 <section class="panel">
 <div id="status">Вне игры</div>
@@ -69,7 +69,7 @@ var names=[
 "Эгоизм","План первичных вибраций","Газовый план","План сияния","План реальности","Позитивный интеллект","Негативный интеллект",
 "Счастье","Тамас","Феноменальный план","Внутреннее пространство","Блаженство","Космическое благо","Космическое сознание",
 "Абсолют","Саттва","Раджас","Завершение"];
-var jumps={4:14,9:31,17:69,20:32,22:60,28:50,36:66,44:9,52:35,55:3,61:13,63:2,64:16,72:51};
+var jumps={10:23,12:8,16:4,17:69,20:32,22:60,24:7,27:41,28:50,29:6,37:66,44:9,45:67,46:62,52:35,54:68,55:3,61:13,63:2,72:51};
 var special={
 1:["Начало пути.","Что хочет родиться в твоей жизни сейчас?"],
 6:["Майя напоминает: карта мира не равна самой реальности.","Какую историю ты сейчас принимаешь за безусловную истину?"],
@@ -99,14 +99,20 @@ function loadState(){
     pos=s.pos; entered=!!s.entered;
     history=Array.isArray(s.history)?s.history:[];
     if(s.die)die.textContent=s.die;
+    if(jumps[pos]){
+      var staleFrom=pos,staleTo=jumps[pos];
+      pos=staleTo;
+      history.unshift("Исправление классической доски: "+staleFrom+" → "+staleTo+" ("+(staleTo>staleFrom?"стрела":"змея")+").");
+      saveState();
+    }
     return;
    }
   }
  }catch(e){}
  // One-time recovery of the session recorded in this chat.
- pos=16; entered=true;
+ pos=8; entered=true;
  history=[
-  "Восстановлено после выгрузки браузера: 16. Ревность.",
+  "Исправлено по классической доске: 12. Зависть → 8. Алчность.",
   "Путь из чата: "+recoveredPath.join(" → ")
  ];
  saveState();
@@ -152,15 +158,16 @@ function roll(){
  die.textContent=["⚀","⚁","⚂","⚃","⚄","⚅"][r-1];
  if(!entered){
   if(r!==6){addLog("Выпало "+r+". Для входа нужна 6.");return;}
-  entered=true;pos=1;addLog("Выпала 6. Вход в игру → клетка 1.");
+  entered=true;pos=6;addLog("Выпала 6. Рождение → клетка 6 «Заблуждение». По классическим правилам шестёрка даёт ещё один бросок.");
  }else{
-  if(pos+r>72){addLog("Выпало "+r+". Для завершения нужен точный ход.");return;}
+  if(pos+r>72){addLog("Выпало "+r+". Ход выходит за пределы 72 — остаёмся на месте.");return;}
   pos+=r;addLog("Выпало "+r+" → клетка "+pos+".");
  }
  if(jumps[pos]){
   var from=pos,to=jumps[pos];
   pos=to;addLog((to>from?"Стрела":"Змея")+": "+from+" → "+to+".");
  }
+ if(pos===68){addLog("68. Космическое сознание — цель игры достигнута.");}
  render();
  saveState();
 }
