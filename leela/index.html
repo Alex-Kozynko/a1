@@ -1,0 +1,142 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#17130d">
+<title>Лила</title>
+<style>
+*{box-sizing:border-box}
+body{margin:0;background:#17130d;color:#f5ead5;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif}
+main{max-width:980px;margin:auto;padding:14px 12px 40px}
+h1{font:600 34px Georgia,serif;color:#f0cf87;margin:3px 0}
+.intro{color:#bcae95;margin-bottom:14px}
+.board-wrap{width:100%;overflow:hidden;border:2px solid #8b7142;background:#33291c;box-shadow:0 10px 35px #0008}
+#board{display:grid;grid-template-columns:repeat(9,minmax(0,1fr));width:100%}
+.cell{height:62px;border:1px solid #59482e;background:#292219;position:relative;padding:4px;overflow:hidden}
+.cell:nth-child(3n+1){background:#30271b}
+.num{font-weight:800;color:#e6bd69;font-size:13px}
+.label{font-size:9px;line-height:1.05;color:#c8b99d;margin-top:3px}
+.up{box-shadow:inset 0 0 0 2px #719a67}
+.down{box-shadow:inset 0 0 0 2px #a45d55}
+.jump{position:absolute;right:3px;top:3px;font-size:10px}
+.piece{position:absolute;width:25px;height:25px;left:50%;top:50%;transform:translate(-50%,-35%);border-radius:50%;background:#f1c451;border:3px solid #fff0b4;box-shadow:0 3px 10px #000}
+.panel{margin-top:14px;border:1px solid #51432f;background:#211b14;border-radius:16px;padding:15px}
+#status{font:600 22px Georgia,serif;color:#f0d28f}
+#meaning{color:#d4c6ac;margin:7px 0 12px}
+#question{background:#17130e;border:1px solid #463923;border-radius:12px;padding:11px;color:#e9d5aa}
+.dice-row{display:flex;align-items:center;gap:12px;margin-top:14px}
+#roll{flex:1;min-height:58px;border:0;border-radius:14px;background:#d8aa50;color:#241909;font-size:17px;font-weight:800;-webkit-appearance:none;touch-action:manipulation}
+#die{width:62px;height:58px;display:flex;align-items:center;justify-content:center;border-radius:14px;background:#342b20;font-size:39px}
+#reset{border:0;background:#342b20;color:#ddd;border-radius:14px;min-width:52px;height:58px;font-size:20px;touch-action:manipulation}
+#log{font-size:13px;color:#a99c87;margin-top:12px;max-height:180px;overflow:auto}
+#log div{padding:4px 0;border-bottom:1px solid #30281d}
+@media(max-width:600px){
+ main{padding:10px 7px 28px}
+ .cell{height:46px;padding:2px}
+ .num{font-size:10px}.label{display:none}.jump{font-size:8px}
+ h1{font-size:30px}
+}
+</style>
+</head>
+<body>
+<main>
+<h1>Лила</h1>
+<div class="intro">Игра самопознания. Для входа в игру выпадает шестёрка.</div>
+<div class="board-wrap"><div id="board"></div></div>
+<section class="panel">
+<div id="status">Вне игры</div>
+<div id="meaning">Сформулируй намерение или вопрос. Затем брось кубик.</div>
+<div id="question">Наблюдай первую честную реакцию на выпавшую клетку, не пытаясь сразу её объяснить.</div>
+<div class="dice-row">
+<div id="die">⚀</div>
+<button id="roll" type="button">Бросить кубик</button>
+<button id="reset" type="button" aria-label="Начать заново">↺</button>
+</div>
+<div id="log"></div>
+</section>
+</main>
+<script>
+(function(){
+"use strict";
+var names=[
+"Рождение","Майя","Гнев","Жадность","Физический план","Заблуждение","Тщеславие","Алчность","Чувственный план",
+"Очищение","Развлечение","Зависть","Ничтожность","Астральный план","Фантазия","Ревность","Сострадание","План радости",
+"Карма","Благотворительность","Искупление","Дхарма","Небесный план","Дурная компания","Хорошая компания","Печаль","Самоотверженное служение",
+"Истинная религиозность","Неправедность","Хорошие тенденции","Святость","План равновесия","Аромат","Вкус","Чистилище","Ясность сознания",
+"Джняна","Прана","Апана","Вьяна","Человеческий план","Огненный план","Рождение человека","Неведение","Правильное знание",
+"Различение","Нейтральность","Солнечный план","Лунный план","Аскеза","Земля","План насилия","Водный план","Духовная преданность",
+"Эгоизм","План первичных вибраций","Газовый план","План сияния","План реальности","Позитивный интеллект","Негативный интеллект",
+"Счастье","Тамас","Феноменальный план","Внутреннее пространство","Блаженство","Космическое благо","Космическое сознание",
+"Абсолют","Саттва","Раджас","Завершение"];
+var jumps={4:14,9:31,17:69,20:32,22:60,28:50,36:66,44:9,52:35,55:3,61:13,63:2,64:16,72:51};
+var special={
+1:["Начало пути.","Что хочет родиться в твоей жизни сейчас?"],
+6:["Майя напоминает: карта мира не равна самой реальности.","Какую историю ты сейчас принимаешь за безусловную истину?"],
+17:["Сострадание расширяет перспективу за пределы личной правоты.","Где можно увидеть другого без защиты собственной позиции?"],
+22:["Дхарма — действие в согласии с глубинной природой.","Что было бы естественным действием без желания что-либо доказать?"],
+36:["Ясность появляется, когда наблюдение становится важнее реакции.","Что остаётся, если несколько секунд не следовать мыслям?"],
+54:["Преданность — доверие большему без потери присутствия.","Чему ты способен довериться прямо сейчас?"],
+68:["Сознание переживается шире отдельной личности.","Где проходит граница между «я» и миром в непосредственном опыте?"],
+69:["Абсолют указывает за пределы противоположностей.","Если ничего не нужно достигать, что уже здесь?"],
+72:["Цикл завершён.","Что весь путь показал тебе о первоначальном вопросе?"]
+};
+var pos=0,entered=false,history=[];
+var board=document.getElementById("board"),die=document.getElementById("die"),status=document.getElementById("status"),meaning=document.getElementById("meaning"),question=document.getElementById("question"),log=document.getElementById("log");
+function boardOrder(){
+ var out=[],row,start,i;
+ for(row=7;row>=0;row--){
+  start=row*9+1;
+  if(row%2===0){for(i=0;i<9;i++)out.push(start+i);}
+  else{for(i=8;i>=0;i--)out.push(start+i);}
+ }
+ return out;
+}
+function render(){
+ var nums=boardOrder(),frag=document.createDocumentFragment(),i,n,c,j;
+ board.innerHTML="";
+ for(i=0;i<nums.length;i++){
+  n=nums[i];c=document.createElement("div");c.className="cell";
+  if(jumps[n])c.className+=" "+(jumps[n]>n?"up":"down");
+  c.innerHTML='<div class="num">'+n+'</div><div class="label">'+names[n-1]+'</div>';
+  if(jumps[n]){j=document.createElement("span");j.className="jump";j.textContent=(jumps[n]>n?"↑":"↓")+jumps[n];c.appendChild(j);}
+  if(pos===n){j=document.createElement("span");j.className="piece";c.appendChild(j);}
+  frag.appendChild(c);
+ }
+ board.appendChild(frag);
+ if(pos){
+  status.textContent=pos+". "+names[pos-1];
+  meaning.textContent=special[pos]?special[pos][0]:"Клетка «"+names[pos-1]+"» — зеркало текущего состояния, а не предсказание.";
+  question.textContent=special[pos]?special[pos][1]:"Где качество «"+names[pos-1].toLowerCase()+"» проявляется в твоей жизни прямо сейчас?";
+ }else{
+  status.textContent="Вне игры";
+  meaning.textContent="Сформулируй намерение или вопрос. Затем брось кубик.";
+  question.textContent="Наблюдай первую честную реакцию на выпавшую клетку, не пытаясь сразу её объяснить.";
+ }
+}
+function addLog(t){history.unshift(t);log.innerHTML="";for(var i=0;i<history.length&&i<12;i++){var d=document.createElement("div");d.textContent=history[i];log.appendChild(d);}}
+function roll(){
+ var r=Math.floor(Math.random()*6)+1;
+ die.textContent=["⚀","⚁","⚂","⚃","⚄","⚅"][r-1];
+ if(!entered){
+  if(r!==6){addLog("Выпало "+r+". Для входа нужна 6.");return;}
+  entered=true;pos=1;addLog("Выпала 6. Вход в игру → клетка 1.");
+ }else{
+  if(pos+r>72){addLog("Выпало "+r+". Для завершения нужен точный ход.");return;}
+  pos+=r;addLog("Выпало "+r+" → клетка "+pos+".");
+ }
+ if(jumps[pos]){
+  var from=pos,to=jumps[pos];
+  pos=to;addLog((to>from?"Стрела":"Змея")+": "+from+" → "+to+".");
+ }
+ render();
+}
+document.getElementById("roll").addEventListener("click",roll,false);
+document.getElementById("reset").addEventListener("click",function(){
+ pos=0;entered=false;history=[];die.textContent="⚀";log.innerHTML="";render();
+},false);
+render();
+})();
+</script>
+</body>
+</html>
