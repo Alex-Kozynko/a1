@@ -81,13 +81,13 @@ var special={
 69:["Абсолют указывает за пределы противоположностей.","Если ничего не нужно достигать, что уже здесь?"],
 72:["Цикл завершён.","Что весь путь показал тебе о первоначальном вопросе?"]
 };
-var pos=0,entered=false,history=[];
+var pos=0,entered=false,finished=false,history=[];
 var STORAGE_KEY="leela_game_state_v2";
 var recoveredPath=[1,7,8,13,15,19,25,50,53,58,13,19,25,27,30,35,37,39,9,15,16,21,27,30,34,39,40,9,14,16];
 var board=document.getElementById("board"),die=document.getElementById("die"),status=document.getElementById("status"),meaning=document.getElementById("meaning"),question=document.getElementById("question"),log=document.getElementById("log");
 function saveState(){
  try{
-  localStorage.setItem(STORAGE_KEY,JSON.stringify({pos:pos,entered:entered,history:history,die:die.textContent}));
+  localStorage.setItem(STORAGE_KEY,JSON.stringify({pos:pos,entered:entered,finished:finished,history:history,die:die.textContent}));
  }catch(e){}
 }
 function loadState(){
@@ -96,7 +96,7 @@ function loadState(){
   if(raw){
    var s=JSON.parse(raw);
    if(typeof s.pos==="number" && s.pos>=0 && s.pos<=72){
-    pos=s.pos; entered=!!s.entered;
+    pos=s.pos; entered=!!s.entered; finished=!!s.finished || s.pos===68;
     history=Array.isArray(s.history)?s.history:[];
     if(s.die)die.textContent=s.die;
     if(jumps[pos]){
@@ -110,7 +110,7 @@ function loadState(){
   }
  }catch(e){}
  // One-time recovery of the session recorded in this chat.
- pos=8; entered=true;
+ pos=8; entered=true; finished=false;
  history=[
   "Исправлено по классической доске: 12. Зависть → 8. Алчность.",
   "Путь из чата: "+recoveredPath.join(" → ")
@@ -147,6 +147,18 @@ function render(){
   meaning.textContent="Сформулируй намерение или вопрос. Затем брось кубик.";
   question.textContent="Наблюдай первую честную реакцию на выпавшую клетку, не пытаясь сразу её объяснить.";
  }
+ var rollBtn=document.getElementById("roll");
+ if(finished){
+  rollBtn.disabled=true;
+  rollBtn.textContent="Игра завершена";
+  rollBtn.style.opacity="0.55";
+  rollBtn.style.cursor="default";
+ }else{
+  rollBtn.disabled=false;
+  rollBtn.textContent="Бросить кубик";
+  rollBtn.style.opacity="1";
+  rollBtn.style.cursor="pointer";
+ }
 }
 function drawLog(){
  log.innerHTML="";
@@ -154,6 +166,7 @@ function drawLog(){
 }
 function addLog(t){history.unshift(t);drawLog();saveState();}
 function roll(){
+ if(finished){addLog("Игра уже завершена на 68. Космическое сознание.");return;}
  var r=Math.floor(Math.random()*6)+1;
  die.textContent=["⚀","⚁","⚂","⚃","⚄","⚅"][r-1];
  if(!entered){
@@ -167,13 +180,16 @@ function roll(){
   var from=pos,to=jumps[pos];
   pos=to;addLog((to>from?"Стрела":"Змея")+": "+from+" → "+to+".");
  }
- if(pos===68){addLog("68. Космическое сознание — цель игры достигнута.");}
+ if(pos===68){
+  finished=true;
+  addLog("68. Космическое сознание — игра завершена.");
+ }
  render();
  saveState();
 }
 document.getElementById("roll").addEventListener("click",roll,false);
 document.getElementById("reset").addEventListener("click",function(){
- pos=0;entered=false;history=[];die.textContent="⚀";log.innerHTML="";saveState();render();
+ pos=0;entered=false;finished=false;history=[];die.textContent="⚀";log.innerHTML="";saveState();render();
 },false);
 loadState();
 drawLog();
